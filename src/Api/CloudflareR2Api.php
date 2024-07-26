@@ -1,5 +1,5 @@
 <?php
-namespace Xgenious\CloudflareR2Sync\API;
+namespace Xgenious\CloudflareR2Sync\Api;
 
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
@@ -14,10 +14,10 @@ class CloudflareR2Api {
     }
 
     private function initializeS3Client() {
-        $access_key_id = get_option('cloudflare_r2_access_key_id');
-        $secret_access_key = get_option('cloudflare_r2_secret_access_key');
-        $endpoint = get_option('cloudflare_r2_endpoint');
-        $bucket = get_option('cloudflare_r2_bucket');
+        $access_key_id = cloudflare_r2_get_option('access_key_id');
+        $secret_access_key = cloudflare_r2_get_option('secret_access_key');
+        $endpoint = cloudflare_r2_get_option('endpoint');
+        $bucket = cloudflare_r2_get_option('bucket');
 
         $this->s3Client = new S3Client([
             'version' => 'latest',
@@ -33,7 +33,7 @@ class CloudflareR2Api {
     }
 
     public function upload_file($file_path, $file_name,$attachment_id) {
-        $bucket = get_option('cloudflare_r2_bucket');
+        $bucket = cloudflare_r2_get_option('bucket');
         $sync_service = new SyncService();
         try {
             $result = $this->s3Client->putObject([
@@ -48,6 +48,52 @@ class CloudflareR2Api {
         } catch (AwsException $e) {
             error_log('Cloudflare R2 upload error: ' . $e->getMessage());
             $sync_service->log_sync_status($attachment_id, 'error', 'Failed to upload file to Cloudflare R2');
+            return false;
+        }
+    }
+
+    public function delete_file($file_name) {
+        $bucket = cloudflare_r2_get_option('bucket');
+        try {
+            $result = $this->s3Client->deleteObject([
+                'Bucket' => $bucket,
+                'Key'    => $file_name,
+            ]);
+            return true;
+        } catch (AwsException $e) {
+            error_log('Cloudflare R2 delete error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function delete_all_objects()
+    {
+        $bucket = cloudflare_r2_get_option('bucket');
+        try {
+            $objects = $this->s3Client->listObjects([
+                'Bucket' => $bucket,
+            ]);
+
+            if (!empty($objects['Contents'])) {
+                $deleteObjects = [];
+                foreach ($objects['Contents'] as $object) {
+                    $deleteObjects[] = ['Key' => $object['Key']];
+                }
+
+                $result = $this->s3Client->deleteObjects([
+                    'Bucket' => $bucket,
+                    'Delete' => [
+                        'Objects' => $deleteObjects,
+                    ],
+                ]);
+
+                return true;
+            }
+
+            return true; // Return true if bucket was already empty
+        } catch (\Exception $e) {
+            // Log the error or handle it as needed
+            error_log('Error deleting objects from R2: ' . $e->getMessage());
             return false;
         }
     }

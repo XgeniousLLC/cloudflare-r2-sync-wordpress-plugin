@@ -1,7 +1,7 @@
 <?php
 namespace Xgenious\CloudflareR2Sync\Services;
 
-use Xgenious\CloudflareR2Sync\API\CloudflareR2Api;
+use Xgenious\CloudflareR2Sync\Api\CloudflareR2Api;
 
 class SyncService {
 

@@ -1,17 +1,19 @@
 <?php
 namespace Xgenious\CloudflareR2Sync\Services;
 
-use Xgenious\CloudflareR2Sync\API\CloudflareR2Api;
+use Xgenious\CloudflareR2Sync\Api\CloudflareR2Api;
 
 class MediaUploadHandler {
     private $cloudflareR2Api;
+    private $syncService;
     private $isEnabled;
     private $baseDir;
 
     public function __construct() {
 
         $this->cloudflareR2Api = new CloudflareR2Api();
-        $this->isEnabled = get_option('cloudflare_r2_enabled', false);
+        $this->syncService = new SyncService();
+        $this->isEnabled = cloudflare_r2_get_option('enabled', false);
         $uploadDir = wp_upload_dir();
         $this->baseDir = trailingslashit($uploadDir['basedir']);
     }
@@ -64,5 +66,34 @@ class MediaUploadHandler {
 
     private function getRelativePath($filePath) {
         return str_replace($this->baseDir, '', $filePath);
+    }
+
+    public function delete_attachment_from_cloudflare_r2($post_id) {
+        // Check if the post is an attachment
+        if (get_post_type($post_id) !== 'attachment') {
+            return;
+        }
+
+        // Get the file path
+        $file = get_attached_file($post_id);
+        if (!$file) {
+            return;
+        }
+
+        // Get the file name (relative path)
+        $upload_dir = wp_upload_dir();
+        $file_name = str_replace($upload_dir['basedir'] . '/', '', $file);
+
+        // Delete the file from Cloudflare R2
+        $result = $this->cloudflareR2Api->delete_file($file_name);
+
+        if ($result) {
+            $this->syncService->log_sync_status($post_id, 'success', 'File deleted from Cloudflare R2');
+        } else {
+            $this->syncService->log_sync_status($post_id, 'error', 'Failed to delete file from Cloudflare R2');
+        }
+
+        // Remove the R2 URL from post meta
+        delete_post_meta($post_id, '_cloudflare_r2_url');
     }
 }

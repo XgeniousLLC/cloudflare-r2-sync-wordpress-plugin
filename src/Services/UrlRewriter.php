@@ -13,11 +13,11 @@ class UrlRewriter
 
     public function __construct()
     {
-        $this->cloudflareR2Bucket = get_option('cloudflare_r2_bucket', false);
-        $this->cloudflareR2Endpoint = get_option('cloudflare_r2_endpoint', false);
-        $this->cloudflareR2Url = get_option('cloudflare_r2_url', false);
+        $this->cloudflareR2Bucket = cloudflare_r2_get_option('bucket','');
+        $this->cloudflareR2Endpoint = cloudflare_r2_get_option('endpoint','');
+        $this->cloudflareR2Url = cloudflare_r2_get_option('url','');
 
-        $this->isEnabled = get_option('cloudflare_r2_enabled', false);
+        $this->isEnabled = cloudflare_r2_get_option('enabled', false);
         $uploadInfo = wp_upload_dir();
         $this->uploadDir = trailingslashit($uploadInfo['basedir']);
         $this->uploadUrl = trailingslashit($uploadInfo['baseurl']);
