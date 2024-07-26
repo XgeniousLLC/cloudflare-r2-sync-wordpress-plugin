@@ -1,0 +1,22 @@
+{
+  "name": "xgenious/cloudflare-r2-sync",
+  "description": "Sync WordPress media assets with Cloudflare R2 Storage",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "version": "1.0.0",
+  "authors": [
+    {
+      "name": "Sharifur",
+      "email": "ceo@xgenious.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4",
+    "aws/aws-sdk-php": "^3.316"
+  },
+  "autoload": {
+    "psr-4": {
+      "Xgenious\\CloudflareR2Sync\\": "src/"
+    }
+  }
+}
