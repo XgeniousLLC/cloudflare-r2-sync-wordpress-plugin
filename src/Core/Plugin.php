@@ -36,24 +36,6 @@ class Plugin {
         add_action('wp_ajax_remove_all_r2_files', [$SyncManager, 'remove_all_r2_files']);
         add_action('wp_ajax_check_sync_status', [$SyncManager, 'check_sync_status']);
 
-
-
-//        add_action('wp_ajax_sync_existing_files', function() {
-//            if (!current_user_can('manage_options')) {
-//                wp_send_json_error('Unauthorized');
-//            }
-//
-//            $syncManager = new SyncManager();
-//            $syncManager->syncAllAttachments();
-//
-//            wp_send_json_success('Sync process started');
-//        });
-
-
-//        $sync_service = new SyncService();
-//        add_filter('wp_generate_attachment_metadata', [$sync_service, 'upload_to_cloudflare_r2'], 10, 2);
-
-
     }
 
     private function define_public_hooks() {

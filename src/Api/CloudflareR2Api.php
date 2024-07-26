@@ -9,16 +9,22 @@ use Xgenious\CloudflareR2Sync\Utilities\Logger;
 class CloudflareR2Api {
 
     private $s3Client;
+    private $isEnabled;
 
     public function __construct() {
         $this->initializeS3Client();
     }
 
     private function initializeS3Client() {
+        $this->isEnabled = cloudflare_r2_get_option('enabled', false);
         $access_key_id = cloudflare_r2_get_option('access_key_id');
         $secret_access_key = cloudflare_r2_get_option('secret_access_key');
         $endpoint = cloudflare_r2_get_option('endpoint');
         $bucket = cloudflare_r2_get_option('bucket');
+
+        if(!$this->isEnabled){
+            return;
+        }
 
         $this->s3Client = new S3Client([
             'version' => 'latest',
