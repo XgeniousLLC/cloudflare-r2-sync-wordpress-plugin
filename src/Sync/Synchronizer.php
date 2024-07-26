@@ -19,22 +19,36 @@ class Synchronizer
         $this->logger = new Logger();
     }
 
-    public function syncFile($attachmentId)
+    public function syncFile($attachmentId, $start_time, $time_limit)
     {
+        $this->logger->log("Syncing file for attachment ID: $attachmentId", 'info');
+        $this->syncService->log_sync_status($attachmentId,'info',"Syncing file for attachment ID: $attachmentId" );
+
         $file = get_attached_file($attachmentId);
         $attachment_url = wp_get_attachment_url($attachmentId);
         $uploaded_from_url = false;
 
         if (!$file || !file_exists($file)) {
-            $this->syncService->log_sync_status($attachmentId, 'info', 'File not found locally, skipping to upload to cloudflare');
-            return 'skip';
-            $this->logger->log( 'File not found locally, attempting to download from URL '.$attachmentId,'info');
-            $file = $this->downloadFile($attachmentId, $attachment_url);
-            if (!$file) {
-                $this->syncService->log_sync_status($attachmentId, 'error', 'Failed to download file from URL. Skipping this file.');
-                return 'skip'; // Return 'skip' to indicate this item should be removed from the queue
+            $this->logger->log("File not found locally for attachment ID: $attachmentId, attempting to download from URL: $attachment_url", 'info');
+            $this->syncService->log_sync_status($attachmentId,'info',"File not found locally for attachment ID: $attachmentId, attempting to download from URL: $attachment_url");
+
+            $file = $this->downloadFile($attachmentId, $attachment_url, $start_time, $time_limit);
+            if ($file === 'retry') {
+                return 'retry';
+            } elseif (!$file) {
+                $this->logger->log("Failed to download file from URL for attachment ID: $attachmentId. Skipping this file.", 'error');
+                $this->syncService->log_sync_status($attachmentId,'error',"Failed to download file from URL for attachment ID: $attachmentId. Skipping this file.");
+
+                return 'skip';
             }
             $uploaded_from_url = true;
+        }
+
+        if (time() - $start_time > $time_limit) {
+            $this->logger->log("Time limit reached while processing attachment ID: $attachmentId. Will retry.", 'info');
+            $this->syncService->log_sync_status($attachmentId,'info',"Time limit reached while processing attachment ID: $attachmentId. Will retry.");
+
+            return 'retry';
         }
 
         $uploadDir = wp_upload_dir();
@@ -47,84 +61,85 @@ class Synchronizer
                 update_post_meta($attachmentId, '_cloudflare_r2_url', $result);
 
                 if ($uploaded_from_url) {
-                    $this->syncService->log_sync_status($attachmentId, 'success', 'File uploaded from URL and synced to Cloudflare R2');
-                    $this->logger->log($attachmentId. ' File uploaded from URL and synced to Cloudflare R2', 'success', );
+                    $this->logger->log("File uploaded from URL and synced to Cloudflare R2 for attachment ID: $attachmentId", 'success');
+                    $this->syncService->log_sync_status($attachmentId,'success',"File uploaded from URL and synced to Cloudflare R2 for attachment ID: $attachmentId");
+
                 } else {
-                    $this->syncService->log_sync_status($attachmentId, 'success', 'File synced to Cloudflare R2');
-                    $this->logger->log($attachmentId.' File synced to Cloudflare R2', 'success', );
+                    $this->logger->log("File synced to Cloudflare R2 for attachment ID: $attachmentId", 'success');
+                    $this->syncService->log_sync_status($attachmentId,'success',"File synced to Cloudflare R2 for attachment ID: $attachmentId");
+
                 }
 
                 return true;
             } else {
-                $this->syncService->log_sync_status($attachmentId, 'error', 'Failed to sync file to Cloudflare R2');
-                $this->logger->log($attachmentId.' Failed to sync file to Cloudflare R2', 'error');
+                $this->logger->log("Failed to sync file to Cloudflare R2 for attachment ID: $attachmentId", 'error');
+                $this->syncService->log_sync_status($attachmentId,'error',"Failed to sync file to Cloudflare R2 for attachment ID: $attachmentId");
+
             }
         } catch (\Exception $e) {
-            $this->syncService->log_sync_status($attachmentId, 'error', 'Exception while syncing file: ' . $e->getMessage());
-            $this->logger->log($attachmentId. 'Exception while syncing file: ' . $e->getMessage(), 'error');
+            $this->logger->log("Exception while syncing file for attachment ID: $attachmentId. Error: " . $e->getMessage(), 'error');
+            $this->syncService->log_sync_status($attachmentId,'error',"Exception while syncing file for attachment ID: $attachmentId. Error: " . $e->getMessage());
+
         }
 
         return false;
     }
 
-    public function downloadFile($attachmentId, $url)
+    private function downloadFile($attachmentId, $url, $start_time, $time_limit)
     {
-        $this->logger->log($attachmentId.' From download file: method' . $attachmentId. $url, 'info',__FILE__,'71' );
         $uploadDir = wp_upload_dir();
         $filePath = get_attached_file($attachmentId);
 
-
         if (empty($filePath)) {
             $fileName = basename($url);
-
             $filePath = $uploadDir['path'] . '/' . wp_unique_filename($uploadDir['path'], $fileName);
-
-            $this->logger->log($attachmentId.' $filePath ' .$filePath, 'info',__FILE__,'82' );
-
-//            if(!file_exists($uploadDir['path'] . '/') && !is_dir($uploadDir['path'] . '/')){
-//                wp_mkdir_p(dirname($filePath));
-//            }
         }
 
-        $this->logger->log($attachmentId.' requesting through download_url ' , 'info',__FILE__,'94' );
+        wp_mkdir_p(dirname($filePath));
 
-        /** @var array|WP_Error $response */
+        $args = array(
+            'timeout'     => min(60, $time_limit - (time() - $start_time)),
+            'redirection' => 5,
+            'sslverify'   => false,
+        );
 
-        $tmp_file = download_url( $url ,100);
-//
-        $this->logger->log($attachmentId.' requesting through download_url finish' , 'info',__FILE__,'102' );
+        $this->logger->log("Attempting to download file from URL: $url", 'info');
+        $this->syncService->log_sync_status($attachmentId,'info',"Attempting to download file from URL: $url");
 
-// Copies the file to the final destination and deletes temporary file.
-        copy( $tmp_file, $filePath );
-        @unlink( $tmp_file );
-
+        $response = wp_safe_remote_get($url, $args);
 
         if (is_wp_error($response)) {
-            $this->syncService->log_sync_status($attachmentId, 'error', 'Failed to download file: ' . $response->get_error_message());
-            $this->logger->log($attachmentId.'Failed to download file: ' . $response->get_error_message(), 'error',__FILE__,'100');
+            $this->logger->log("Failed to download file: " . $response->get_error_message(), 'error');
+            $this->syncService->log_sync_status($attachmentId,'error',"Failed to download file: " . $response->get_error_message());
             return false;
         }
 
         $body = wp_remote_retrieve_body($response);
-
         if (empty($body)) {
-            $this->syncService->log_sync_status($attachmentId, 'error', 'Downloaded file is empty');
-            $this->logger->log($attachmentId.'Downloaded file is empty', 'error',__FILE__,'108');
-            return false;
-        }
-        $put_fileinto_folder = file_put_contents($filePath, $body);
+            $this->logger->log("Downloaded file is empty", 'error');
+            $this->syncService->log_sync_status($attachmentId,'error',"Downloaded file is empty");
 
-        if ($put_fileinto_folder  === false) {
-            $this->syncService->log_sync_status($attachmentId, 'error', 'Failed to save downloaded file');
-            $this->logger->log($attachmentId.'Failed to save downloaded file', 'error',__FILE__,'115');
             return false;
         }
-        $this->syncService->log_sync_status($attachmentId, 'info', 'Success to save downloaded file');
-        $this->logger->log($attachmentId.'Success to save downloaded file', 'info',__FILE__,'119');
+
+        if (time() - $start_time > $time_limit) {
+            $this->logger->log("Time limit reached while downloading file. Will retry.", 'info');
+            $this->syncService->log_sync_status($attachmentId,'error',"Time limit reached while downloading file. Will retry.");
+            return 'retry';
+        }
+
+        if (file_put_contents($filePath, $body) === false) {
+            $this->logger->log("Failed to save downloaded file", 'error');
+            $this->syncService->log_sync_status($attachmentId,'error',"Failed to save downloaded file");
+
+            return false;
+        }
 
         update_attached_file($attachmentId, $filePath);
         wp_update_attachment_metadata($attachmentId, wp_generate_attachment_metadata($attachmentId, $filePath));
 
+        $this->logger->log("File successfully downloaded and saved: $filePath", 'info');
+        $this->syncService->log_sync_status($attachmentId,'error',"File successfully downloaded and saved: $filePath");
         return $filePath;
     }
 }

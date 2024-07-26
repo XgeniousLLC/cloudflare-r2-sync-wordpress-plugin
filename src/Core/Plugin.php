@@ -34,6 +34,8 @@ class Plugin {
         add_action('wp_ajax_cancel_sync_jobs',  [$SyncManager,'cancel_sync_jobs']);
         add_action('wp_ajax_clear_sync_logs',  [$SyncManager,'clear_sync_logs']);
         add_action('wp_ajax_remove_all_r2_files', [$SyncManager, 'remove_all_r2_files']);
+        add_action('wp_ajax_check_sync_status', [$SyncManager, 'check_sync_status']);
+
 
 
 //        add_action('wp_ajax_sync_existing_files', function() {

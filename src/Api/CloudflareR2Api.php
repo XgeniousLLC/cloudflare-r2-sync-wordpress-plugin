@@ -4,6 +4,7 @@ namespace Xgenious\CloudflareR2Sync\Api;
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
 use Xgenious\CloudflareR2Sync\Services\SyncService;
+use Xgenious\CloudflareR2Sync\Utilities\Logger;
 
 class CloudflareR2Api {
 
@@ -46,6 +47,7 @@ class CloudflareR2Api {
             $sync_service->log_sync_status($attachment_id, 'success', 'File uploaded to Cloudflare R2');
             return $result['ObjectURL'];
         } catch (AwsException $e) {
+            Logger::inlineLog('Cloudflare R2 upload error: ' . $e->getMessage(),'info',__FILE__,'50');
             error_log('Cloudflare R2 upload error: ' . $e->getMessage());
             $sync_service->log_sync_status($attachment_id, 'error', 'Failed to upload file to Cloudflare R2');
             return false;

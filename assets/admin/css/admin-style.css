@@ -4,3 +4,17 @@
     align-items: center;
     margin-bottom: 40px;
 }
+.page-numbers {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid #e2e2e2;
+    line-height: 30px;
+}
+
+.page-numbers.current {
+    background-color: #3582c4;
+    border-color: #3582c4;
+    color: #fff;
+}

@@ -51,6 +51,30 @@ class SyncPage {
         <script>
             jQuery(document).ready(function($) {
 
+                function checkSyncStatus() {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'check_sync_status'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#pending-jobs').text(response.data.pending);
+                                $('#processed-jobs').text(response.data.processed);
+                                $('#total-jobs').text(response.data.total);
+                                if (response.data.is_processing) {
+                                    $('#sync-status').text('Sync in progress...');
+                                    setTimeout(checkSyncStatus, 5000); // Check again in 5 seconds
+                                } else {
+                                    $('#sync-status').text('Sync completed');
+                                }
+                            }
+                        }
+                    });
+                }
+
+
                 function updateJobStats() {
                     $.ajax({
                         url: ajaxurl,
@@ -74,6 +98,7 @@ class SyncPage {
                     var button = $(this);
                     button.prop('disabled', true);
                     $('#sync-status').text('');
+                    checkSyncStatus();
 
                     $.ajax({
                         url: ajaxurl,

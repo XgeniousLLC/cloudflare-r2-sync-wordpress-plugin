@@ -134,4 +134,20 @@ class SyncManager
         }
     }
 
+    public function check_sync_status()
+    {
+        $total_jobs = get_option('cloudflare_r2_sync_total_jobs', 0);
+        $processed = get_option('cloudflare_r2_sync_processed_count', 0);
+        $pending = max(0, $total_jobs - $processed);
+
+        $is_processing = $this->backgroundSync->is_processing();
+
+        wp_send_json_success([
+            'pending' => $pending,
+            'processed' => $processed,
+            'total' => $total_jobs,
+            'is_processing' => $is_processing
+        ]);
+    }
+
 }

@@ -4,11 +4,17 @@ namespace Xgenious\CloudflareR2Sync\Sync;
 use WP_Background_Process;
 use Xgenious\CloudflareR2Sync\Api\CloudflareR2Api;
 use Xgenious\CloudflareR2Sync\Services\SyncService;
+use Xgenious\CloudflareR2Sync\Utilities\Logger;
 
 class BackgroundSync extends WP_Background_Process
 {
     protected $action = 'cloudflare_r2_sync';
-
+    private $logger;
+    public function __construct()
+    {
+        parent::__construct();
+        $this->logger = new Logger();
+    }
     /**
      * Get the cron event name.
      *
@@ -25,28 +31,31 @@ class BackgroundSync extends WP_Background_Process
     protected function task($item)
     {
 
+        $this->logger->log("Starting sync process for attachment ID: $item", 'info');
+
+        // Set a time limit for this task
+        $start_time = time();
+        $time_limit = 60; // 1 minute
+
         $synchronizer = new Synchronizer();
-        $result = $synchronizer->syncFile($item);
-        $syncService = new SyncService();
+        $result = $synchronizer->syncFile($item, $start_time, $time_limit);
 
         if ($result === true) {
-            // Increment the processed count
+            $this->logger->log("Sync process completed successfully for attachment ID: $item", 'success');
             $processed = get_option('cloudflare_r2_sync_processed_count', 0);
             update_option('cloudflare_r2_sync_processed_count', $processed + 1);
-            $syncService->log_sync_status($item, 'info', 'Sync process completed successfully');
-
-
-            return false; // Remove from queue if successful
+            return false;
         } elseif ($result === 'skip') {
-            // Increment the processed count even for skipped items
+            $this->logger->log("Sync process skipped for attachment ID: $item", 'info');
             $processed = get_option('cloudflare_r2_sync_processed_count', 0);
             update_option('cloudflare_r2_sync_processed_count', $processed + 1);
-            $syncService->log_sync_status($item, 'error', 'Sync process Skipped, will retry');
-
-            return false; // Remove from queue if we're skipping this item
+            return false;
+        } elseif ($result === 'retry') {
+            $this->logger->log("Sync process timed out for attachment ID: $item, will retry", 'info');
+            return $item;
         } else {
-            $syncService->log_sync_status($item, 'error', 'Sync process failed, will retry');
-            return $item; // Keep in queue for retry if failed
+            $this->logger->log("Sync process failed for attachment ID: $item, will retry", 'error');
+            return $item;
         }
     }
 
