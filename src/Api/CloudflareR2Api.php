@@ -22,8 +22,8 @@ class CloudflareR2Api {
         $endpoint = cloudflare_r2_get_option('endpoint');
         $bucket = cloudflare_r2_get_option('bucket');
 
-        if(!$this->isEnabled){
-            return;
+        if(empty($access_key_id) || empty($secret_access_key) || empty($endpoint) || empty($bucket)){
+            throw new Exception('configure your cloudflare settings first');
         }
 
         $this->s3Client = new S3Client([

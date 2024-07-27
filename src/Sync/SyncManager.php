@@ -2,6 +2,7 @@
 namespace Xgenious\CloudflareR2Sync\Sync;
 
 use Xgenious\CloudflareR2Sync\Api\CloudflareR2Api;
+use Xgenious\CloudflareR2Sync\Utilities\Logger;
 
 class SyncManager
 {
@@ -100,7 +101,9 @@ class SyncManager
         $table_name = $wpdb->prefix . 'xg_cloudflare_r2_sync_log';
 
         $result = $wpdb->query("TRUNCATE TABLE $table_name");
-
+        $logger = new Logger();
+        $logger->clear_logs();
+        
         if ($result !== false) {
             wp_send_json(['success' => true, 'msg' => 'All sync logs cleared successfully.'],200);
         } else {
@@ -114,7 +117,9 @@ class SyncManager
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Unauthorized');
         }
-
+        
+        $logger = new Logger();
+        
 
         try {
             $r2Api = new CloudflareR2Api();
@@ -124,12 +129,14 @@ class SyncManager
                 global $wpdb;
                 $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_cloudflare_r2_synced'");
                 $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key = '_cloudflare_r2_url'");
-
+                $logger->log('All files removed from Cloudflare R2 successfully.');
                 wp_send_json_success('All files removed from Cloudflare R2 successfully.');
             } else {
+                $logger->log('Failed to remove files from Cloudflare R2','error');
                 wp_send_json_error('Failed to remove files from Cloudflare R2.');
             }
         } catch (\Exception $e) {
+            $logger->log('Error removing files from Cloudflare R2: ' . $e->getMessage(),'error');
             wp_send_json_error('Error removing files from Cloudflare R2: ' . $e->getMessage());
         }
     }
