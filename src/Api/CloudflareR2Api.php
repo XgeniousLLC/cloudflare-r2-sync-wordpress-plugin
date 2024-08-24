@@ -17,14 +17,13 @@ class CloudflareR2Api {
 
     private function initializeS3Client() {
         $this->isEnabled = cloudflare_r2_get_option('enabled', false);
-        $access_key_id = cloudflare_r2_get_option('access_key_id');
-        $secret_access_key = cloudflare_r2_get_option('secret_access_key');
-        $endpoint = cloudflare_r2_get_option('endpoint');
-        $bucket = cloudflare_r2_get_option('bucket');
+        $access_key_id = cloudflare_r2_get_option('access_key_id','');
+        $secret_access_key = cloudflare_r2_get_option('secret_access_key','');
+        $endpoint = cloudflare_r2_get_option('endpoint','');
+        $bucket = cloudflare_r2_get_option('bucket','');
 
         if(empty($access_key_id) || empty($secret_access_key) || empty($endpoint) || empty($bucket)){
             //throw new Exception('configure your cloudflare settings first');
-            return;
         }
 
         $this->s3Client = new S3Client([
