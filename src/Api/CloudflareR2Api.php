@@ -23,7 +23,8 @@ class CloudflareR2Api {
         $bucket = cloudflare_r2_get_option('bucket');
 
         if(empty($access_key_id) || empty($secret_access_key) || empty($endpoint) || empty($bucket)){
-            throw new Exception('configure your cloudflare settings first');
+            //throw new Exception('configure your cloudflare settings first');
+            return;
         }
 
         $this->s3Client = new S3Client([
