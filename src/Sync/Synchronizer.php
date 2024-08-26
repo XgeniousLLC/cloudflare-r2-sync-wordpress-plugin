@@ -69,6 +69,10 @@ class Synchronizer
                     $this->syncService->log_sync_status($attachmentId,'success',"File synced to Cloudflare R2 for attachment ID: $attachmentId");
 
                 }
+                
+                update_post_meta($attachmentId, 'cloudflare_r2_url', $result);
+                
+                $this->logger->log("File synced to Cloudflare R2 for attachment ID: $attachmentId url: $result", 'success');
 
                 return true;
             } else {
@@ -135,11 +139,12 @@ class Synchronizer
             return false;
         }
 
-        update_attached_file($attachmentId, $filePath);
         wp_update_attachment_metadata($attachmentId, wp_generate_attachment_metadata($attachmentId, $filePath));
 
         $this->logger->log("File successfully downloaded and saved: $filePath", 'info');
         $this->syncService->log_sync_status($attachmentId,'error',"File successfully downloaded and saved: $filePath");
+        
+        
         return $filePath;
     }
 }

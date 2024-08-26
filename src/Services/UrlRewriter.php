@@ -2,6 +2,9 @@
 
 namespace Xgenious\CloudflareR2Sync\Services;
 
+use Xgenious\CloudflareR2Sync\Utilities\Logger;
+
+
 class UrlRewriter
 {
     private $isEnabled;
@@ -26,19 +29,16 @@ class UrlRewriter
 
     private function setupHooks() {
         if ($this->isEnabled) {
-            add_filter('the_content', [$this, 'rewriteContentUrls'], 999); // High priority to run after other filters
+            $this->debugLog('from setupHooks');
+            add_filter('the_content', [$this, 'rewriteContentUrls'], 10); // Changed priority to 10
             add_filter('wp_get_attachment_url', [$this, 'rewriteAttachmentUrl'], 10, 2);
             add_filter('wp_get_attachment_image_src', [$this, 'rewriteImageSrc'], 10, 4);
             add_filter('wp_calculate_image_srcset', [$this, 'rewriteImageSrcset'], 10, 5);
+            add_filter('wp_get_attachment_image_attributes', [$this, 'rewriteImageAttributes'], 10, 3);
         }
     }
 
-    public function rewriteAttachmentUrl($url, $attachment_id)
-    {
-        $r2_url = get_post_meta($attachment_id, 'cloudflare_r2_url', true);
-        return $r2_url ? $this->replace_r2_bucket_url_with_domain($r2_url) : $url;
-    }
-
+  
     public function rewriteImageSrc($image, $attachment_id, $size, $icon)
     {
         if (!$image) {
@@ -106,6 +106,7 @@ class UrlRewriter
         $pattern = '/<img[^>]+src=([\'"])(.*?)\1[^>]*>/i';
         return preg_replace_callback($pattern, [$this, 'replaceImageCallback'], $content);
     }
+    
     private function replaceImageCallback($matches) {
         $img_tag = $matches[0];
         $src = $matches[2];
@@ -147,6 +148,7 @@ class UrlRewriter
         // Check if dimensions match
         return ($requested[0] == $stored[0] && $requested[1] == $stored[1]);
     }
+    
     private function rewriteSrcSet($srcset) {
         $srcset_parts = explode(',', $srcset);
         $new_srcset_parts = array();
@@ -171,7 +173,6 @@ class UrlRewriter
 
         $relative_path = str_replace($this->uploadUrl, '', $url);
         $local_path = $this->uploadDir . $relative_path;
-        $attachment_id = $this->getAttachmentIdFromUrl($url);
         $attachment_id = $this->getAttachmentIdFromUrl($url);
 
         if ($attachment_id) {
@@ -244,5 +245,19 @@ class UrlRewriter
             return $matches[1] . 'x' . $matches[2];
         }
         return 'full';
+    }
+    
+    private function debugLog($message) {
+        $logger = new Logger();
+        $logger->log('Cloudflare R2 Debug: ' . $message, 'info');
+    }
+    
+    public function rewriteAttachmentUrl($url, $attachment_id) {
+        $r2_url = get_post_meta($attachment_id, 'cloudflare_r2_url', true);
+        
+         $this->debugLog('rewriteAttachmentUrl '.$attachment_id.' '.$r2_url);
+         $this->debugLog('rewriteAttachmentUrl '.$url.' '.$r2_url);
+        
+        return $r2_url ? $this->replace_r2_bucket_url_with_domain($r2_url) : $url;
     }
 }
