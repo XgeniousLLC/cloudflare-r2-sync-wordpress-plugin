@@ -29,18 +29,8 @@ class Menus {
                 'Dashboard', // Menu title
                 'manage_options', // Capability
                 'r2-sync', // Menu slug (same as parent for main submenu item)
-                [$this,'r2_sync_dashboard_page'] // Function to display the dashboard
+                [\Xgenious\CloudflareR2Sync\Admin\Pages\Settings::class, 'render_page'] // Function to display the dashboard
             );
-
-            add_submenu_page(
-                'r2-sync', // Parent slug
-                'Settings', // Page title
-                'Settings', // Menu title
-                'manage_options', // Capability
-                'r2-sync-settings', // Menu slug
-                [\Xgenious\CloudflareR2Sync\Admin\Pages\Settings::class, 'render_page'] // Static method to render the page
-            );
-
             add_submenu_page(
                 'r2-sync', // Parent slug
                 'Sync Logs', // Page title
