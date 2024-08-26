@@ -2,7 +2,7 @@
 /*
 Plugin Name: Cloudflare R2 Sync
 Description: Sync WordPress media assets with Cloudflare R2 Storage
-Version: 1.2.0
+Version: 1.3.0
 Author: wpHex
 Author URI: https://wphex.com
 */
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 }
 define('CLOUDFLARE_R2_SYNC_PATH', plugin_dir_path(__FILE__));
 define('CLOUDFLARE_R2_SYNC_URL', plugin_dir_url(__FILE__));
-define('CLOUDFLARE_R2_VERSION','1.2.0');
+define('CLOUDFLARE_R2_VERSION','1.3.0');
 
 // Check if Composer's autoloader exists
 if (file_exists(plugin_dir_path(__FILE__) . 'vendor/autoload.php')) {
